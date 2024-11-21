@@ -12,7 +12,7 @@ urlpatterns = [
     path('search/', search_restaurants, name='search_restaurants'),
     path('restaurant/<int:restaurant_id>/book/', book_table, name='book_table'),
 
-    
+    path('', home, name='home'),
     path('base/', Base.as_view() , name='base'),
     path('success/', success , name='success'),
     path('booking-success/', booking_success , name='booking-success'),

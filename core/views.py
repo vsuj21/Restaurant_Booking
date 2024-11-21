@@ -190,6 +190,8 @@ def book_table(request, restaurant_id):
 
     return render(request, 'book_table.html', {'restaurant': restaurant, 'time_slots': available_slots})
 
+def home(request):
+    return render(request, 'home.html')
 
 def owner_dashboard(request):
     return render(request, 'owner_dashboard.html')
