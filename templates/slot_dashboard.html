@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Add Time Slots for Your Restaurant</h2>
+<form id="slotForm" method="POST">
+    {% csrf_token %}
+    <div class="mb-3">
+        <label for="restaurant" class="form-label">Restaurant</label>
+        <select name="restaurant" id="restaurant" class="form-select">
+            {% for restaurant in restaurants %}
+                <option value="{{ restaurant.id }}">{{ restaurant.name }}, {{ restaurant.city }}, {{ restaurant.area }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label for="start_time" class="form-label">Start Time</label>
+        <input type="datetime-local" name="start_time" id="start_time" class="form-control" required>
+    </div>
+
+    <div class="mb-3">
+        <label for="end_time" class="form-label">End Time</label>
+        <input type="datetime-local" name="end_time" id="end_time" class="form-control" required>
+    </div>
+
+    <div class="mb-3">
+        <label for="capacity" class="form-label">Capacity</label>
+        <input type="number" name="capacity" id="capacity" class="form-control" min="1" required>
+    </div>
+
+    <div id="errorMessages" class="text-danger mb-3"></div>
+
+    <button type="submit" class="btn btn-success">Add Slot</button>
+    <a href="{% url 'owner-dashboard' %}" class="btn btn-secondary">Back</a>
+</form>
+
+<script>
+    document.getElementById('slotForm').addEventListener('submit', async function (event) {
+        event.preventDefault(); // Prevent form from submitting normally
+    
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+        const restaurant = document.getElementById('restaurant').value;
+        const start_time = document.getElementById('start_time').value;
+        const end_time = document.getElementById('end_time').value;
+        const capacity = document.getElementById('capacity').value;
+    
+        const errorMessagesDiv = document.getElementById('errorMessages');
+        errorMessagesDiv.innerHTML = ''; // Clear any previous error messages
+    
+        // Client-side validation (optional but recommended)
+        if (!start_time || !end_time || !capacity) {
+            const error = document.createElement('p');
+            error.textContent = 'All fields are required.';
+            errorMessagesDiv.appendChild(error);
+            return;
+        }
+    
+        try {
+            const response = await fetch("{% url 'add-slots' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    restaurant,
+                    start_time: new Date(start_time).toISOString(),
+                    end_time: new Date(end_time).toISOString(),
+                    capacity
+                })
+            });
+    
+            if (response.ok) {
+                // Redirect to success page
+                window.location.href = "{% url 'success' %}";
+            } else {
+                const data = await response.json();
+    
+                // Display errors from the backend
+                if (data.error) {
+                    const error = document.createElement('p');
+                    error.textContent = data.error;
+                    errorMessagesDiv.appendChild(error);
+                } else {
+                    for (const [key, value] of Object.entries(data)) {
+                        const error = document.createElement('p');
+                        error.textContent = value;
+                        errorMessagesDiv.appendChild(error);
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            const generalError = document.createElement('p');
+            generalError.textContent = 'An unexpected error occurred. Please try again later.';
+            errorMessagesDiv.appendChild(generalError);
+        }
+    });
+    
+</script>
+{% endblock %}

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container text-center mt-5">
+    <h2>{{ message }}</h2>
+    <div class="mt-4">
+        <a href="{% url 'register-restaurant' %}" class="btn btn-primary">Register Another Restaurant</a>
+        <a href="{% url 'add-slots' %}" class="btn btn-success">Add Slots</a>
+        <a href="{% url 'owner-dashboard' %}" class="btn btn-secondary">Back to Dashboard</a>
+    </div>
+</div>
+{% endblock %}

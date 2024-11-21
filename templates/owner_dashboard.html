@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Restaurant Owner Dashboard</h2>
+<div class="mb-4">
+    <a href="{% url 'register-restaurant' %}" class="btn btn-primary">Register Restaurant</a>
+    <a href="{% url 'add-slots' %}" class="btn btn-secondary">Add Time Slots</a>
+</div>
+{% endblock %}

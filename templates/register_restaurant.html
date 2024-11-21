@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register Restaurant</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .form-container {
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .form-header {
+            margin-bottom: 20px;
+        }
+        #error-message {
+            color: red;
+        }
+        #success-message {
+            color: green;
+        }
+    </style>
+    <script>
+        // Function to handle the form submission via JavaScript
+        function registerRestaurant(event) {
+            event.preventDefault(); // Prevents the default form submission behavior
+            
+            // Collect form data
+            const formData = new FormData(event.target);
+            const data = Object.fromEntries(formData.entries());
+
+            // Make a POST request to the Django API
+            fetch('{% url "register-restaurant" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Handle the response (success or error)
+                if (data.error) {
+                    document.getElementById('error-message').textContent = data.error;
+                    document.getElementById('success-message').textContent = ''; // Clear success message
+                } else {
+                    window.location.href = '/success/';
+                    
+                }
+            })
+            .catch(error => {
+                document.getElementById('error-message').textContent = 'An error occurred. Please try again.';
+            });
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <div class="form-container">
+            <h2 class="text-center form-header">Register Restaurant</h2>
+            <form id="register-form" onsubmit="registerRestaurant(event)">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label for="name" class="form-label">Restaurant Name</label>
+                    <input type="text" class="form-control" id="name" name="name" placeholder="Enter Restaurant Name" required>
+                </div>
+                <div class="mb-3">
+                    <label for="city" class="form-label">City</label>
+                    <input type="text" class="form-control" id="city" name="city" placeholder="Enter City" required>
+                </div>
+                <div class="mb-3">
+                    <label for="area" class="form-label">Area</label>
+                    <input type="text" class="form-control" id="area" name="area" placeholder="Enter Area" required>
+                </div>
+                <div class="mb-3">
+                    <label for="cuisine" class="form-label">Cuisine</label>
+                    <input type="text" class="form-control" id="cuisine" name="cuisine" placeholder="Enter Cuisine (e.g., Indian, Italian)" required>
+                </div>
+                <div class="mb-3">
+                    <label for="cost_for_two" class="form-label">Cost for Two</label>
+                    <input type="number" class="form-control" id="cost_for_two" name="cost_for_two" placeholder="Enter Cost for Two (e.g., 500.00)" step="0.01" required>
+                </div>
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="is_veg" name="is_veg">
+                    <label for="is_veg" class="form-check-label">Vegetarian Only</label>
+                </div>
+                <button type="submit" class="btn btn-primary w-80">Register</button>
+                
+                <a href="{% url 'owner-dashboard' %}" class="btn btn-primary w-80">Back</a>
+            </form>
+            <p id="error-message" class="mt-3"></p>
+            <p id="success-message" class="mt-3"></p>
+        </div>
+    </div>
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
