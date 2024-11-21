@@ -16,20 +16,32 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <!-- Small Buttons for Owner and Customer -->
                 <ul class="navbar-nav ms-auto">
+                    <!-- Small Buttons for Owner and Customer -->
                     <li class="nav-item">
                         <a href="/owner-dashboard/" class="btn btn-outline-light btn-sm me-2">Restaurant Owner</a>
                     </li>
                     <li class="nav-item">
-                        <a href="/customer-dashboard/" class="btn btn-outline-light btn-sm">Customer</a>
+                        <a href="/customer-dashboard/" class="btn btn-outline-light btn-sm me-2">Customer</a>
                     </li>
+
+                    <!-- Login/Logout based on user authentication -->
+                    {% if user.is_authenticated %}
+                        <li class="nav-item">
+                            <a href="{% url 'logout' %}" class="btn btn-danger btn-sm">Logout</a>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a href="{% url 'login' %}" class="btn btn-primary btn-sm">Login</a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{% url 'signup' %}" class="btn btn-success btn-sm ms-2">Sign Up</a>
+                        </li>
+                    {% endif %}
                 </ul>
             </div>
         </div>
     </nav>
-
-    
 
     <!-- Content Block -->
     <div class="container mt-4">

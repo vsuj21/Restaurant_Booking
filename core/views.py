@@ -4,11 +4,12 @@ from rest_framework import status
 from django.contrib.auth.models import User
 from .models import Restaurant, TimeSlot, Booking
 from .serializers import RestaurantSerializer, TimeSlotSerializer, BookingSerializer
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 from django.db import transaction
 from datetime import timedelta
-
+from django.contrib.auth import authenticate, login, logout
+from django.contrib import messages
 
 class Base(APIView):
     def get(self, request):
@@ -45,6 +46,8 @@ class AddSlotsView(APIView):
     def get(self, request):
         # Fetch all restaurants and pass them to the template
         restaurants = Restaurant.objects.all()
+        if restaurants.count() == 0:
+            return Response({"message": "No restaurants found. Please register a restaurant first."}, status=status.HTTP_404_NOT_FOUND)
         return render(request, 'slot_dashboard.html', {'restaurants': restaurants})
 
     def post(self, request):
@@ -106,65 +109,71 @@ class AddSlotsView(APIView):
 from django.http import JsonResponse
 from django.db.models import Q
 
-def search_restaurant(request):
-    # Get query parameters from the request
-    name = request.GET.get('name', '').strip()
-    city = request.GET.get('city', '').strip()
-    area = request.GET.get('area', '').strip()
-    cuisine = request.GET.get('cuisine', '').strip()
-    max_cost = request.GET.get('cost', None)
-    is_veg = request.GET.get('is_veg', None)
+from django.shortcuts import render
+from .models import Restaurant
 
-    # Build the query using Q objects for flexible filtering
-    filters = Q()
-    if name:
-        filters &= Q(name__icontains=name)
-    if city:
-        filters &= Q(city__icontains=city)
-    if area:
-        filters &= Q(area__icontains=area)
+def search_restaurants(request):
+    query = request.GET.get('query', '')
+    cuisine = request.GET.get('cuisine', '')
+    cost_for_two_min = request.GET.get('cost_for_two_min', None)
+
+    restaurants = Restaurant.objects.all()
+    
+
+    if query:
+        restaurants = restaurants.filter(
+            Q(name__icontains=query) | 
+            Q(city__icontains=query) | 
+            Q(area__icontains=query) | 
+            Q(cuisine__icontains=query)
+        )
     if cuisine:
-        filters &= Q(cuisine__icontains=cuisine)
-    if max_cost:
-        filters &= Q(cost_for_two__lte=float(max_cost))
-    if is_veg is not None:
-        filters &= Q(is_veg=is_veg.lower() == 'true')  # Convert string to boolean
+        restaurants = restaurants.filter(cuisine__icontains=cuisine)
+    if cost_for_two_min:
+        restaurants = restaurants.filter(cost_for_two__gte=cost_for_two_min)
 
-    # Query the database
-    restaurants = Restaurant.objects.filter(filters)
-
-    # Prepare the response data
-    data = [
-        {
-            "id": restaurant.id,
-            "name": restaurant.name,
-            "city": restaurant.city,
-            "area": restaurant.area,
-            "cuisine": restaurant.cuisine,
-            "cost_for_two": float(restaurant.cost_for_two),
-            "is_veg": restaurant.is_veg,
-        }
-        for restaurant in restaurants
-    ]
-
-    return JsonResponse(data, safe=False)
+    return render(request, 'search_result.html', {'restaurants': restaurants})
 
 
-# Book a table
-class BookTableView(APIView):
-    def post(self, request):
-        serializer = BookingSerializer(data=request.data)
-        if serializer.is_valid():
-            timeslot = TimeSlot.objects.get(id=request.data['timeslot'])
-            if timeslot.capacity > 0:
-                timeslot.capacity -= 1
-                timeslot.save()
-                serializer.save()
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
-            return Response({"error": "Slot not available"}, status=status.HTTP_400_BAD_REQUEST)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+M = 7
 
+def book_table(request, restaurant_id):
+    restaurant = get_object_or_404(Restaurant, id=restaurant_id)
+    
+    # Get available time slots for the restaurant
+    current_time = timezone.now()
+    available_slots = TimeSlot.objects.filter(
+        restaurant=restaurant,
+        start_time__gte=current_time,
+        start_time__lte=current_time + timedelta(days=M)
+    )
 
+    if request.method == 'POST':
+        # Handle booking
+        people_count = int(request.POST['people_count'])
+        time_slot_id = request.POST['time_slot']
+        selected_slot = get_object_or_404(TimeSlot, id=time_slot_id)
+
+        # Validate availability of slot
+        if selected_slot.capacity < people_count:
+            return render(request, 'booking_success.html', {'message': 'Not enough capacity for the selected number of people.'})
+
+        # Create the booking
+        booking = Booking(
+            customer_name=request.user.username,  #  customer is logged in
+            customer_email=request.user.email,
+            time_slot=selected_slot,
+            people_count=people_count
+        )
+        booking.save()
+
+        # Reduce the capacity of the time slot
+        selected_slot.capacity -= people_count
+        selected_slot.save()
+
+        return redirect('booking-success')  # You can create a success page after booking
+
+    return render(request, 'book_table.html', {'restaurant': restaurant, 'time_slots': available_slots})
 def owner_dashboard(request):
     return render(request, 'owner_dashboard.html')
 
@@ -173,3 +182,47 @@ def customer_dashboard(request):
 
 def success(request):
     return render(request, 'success.html', {"message": "Registration Successful!"})
+
+def booking_success(request):
+    return render(request, 'booking_success.html', {"message": "Booking Successful!"})
+
+
+def login_view(request):
+    if request.method == 'POST':
+        username = request.POST['username']
+        password = request.POST['password']
+        user = authenticate(request, username=username, password=password)
+        if user is not None:
+            login(request, user)
+            messages.success(request, f"Welcome back, {user.username}!")
+            return redirect('base')  # Redirect to the home page or another page
+        else:
+            messages.error(request, "Invalid username or password.")
+    return render(request, 'login.html')
+
+
+def signup_view(request):
+    if request.method == 'POST':
+        username = request.POST['username']
+        email = request.POST['email']
+        password = request.POST['password']
+        confirm_password = request.POST['confirm_password']
+
+        if password != confirm_password:
+            messages.error(request, "Passwords do not match.")
+        elif User.objects.filter(username=username).exists():
+            messages.error(request, "Username already exists.")
+        elif User.objects.filter(email=email).exists():
+            messages.error(request, "Email already registered.")
+        else:
+            user = User.objects.create_user(username=username, email=email, password=password)
+            user.save()
+            messages.success(request, "Account created successfully. You can now log in!")
+            return redirect('login')  # Redirect to the login page
+    return render(request, 'signup.html')
+
+
+def logout_view(request):
+    logout(request)
+    messages.success(request, "You have been logged out.")
+    return redirect('base')

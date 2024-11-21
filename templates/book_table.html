@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    {% if user.is_authenticated %}
+        <div class="card shadow p-4">
+            <h2 class="text-center mb-4">Book a Table at {{ restaurant.name }}</h2>
+            <form method="post" action="{% url 'book_table' restaurant.id %}">
+                {% csrf_token %}
+                <!-- People Count -->
+                <div class="mb-3">
+                    <label for="people_count" class="form-label">People Count:</label>
+                    <input 
+                        type="number" 
+                        class="form-control" 
+                        id="people_count" 
+                        name="people_count" 
+                        min="1" 
+                        required 
+                        placeholder="Enter number of people" />
+                </div>
+
+                <!-- Time Slot Selection -->
+                <div class="mb-3">
+                    <label for="time_slot" class="form-label">Select Time Slot:</label>
+                    <select 
+                        id="time_slot" 
+                        name="time_slot" 
+                        class="form-select" 
+                        required>
+                        <option value="" disabled selected>Choose a time slot</option>
+                        {% for slot in time_slots %}
+                            <option value="{{ slot.id }}">
+                                {{ slot.start_time }} - {{ slot.end_time }} (Capacity: {{ slot.capacity }})
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-success btn-lg">Book Table</button>
+                </div>
+            </form>
+        </div>
+    {% else %}
+        <div class="alert alert-warning text-center" role="alert">
+            <h4 class="alert-heading">Log in or Sign up to Book a Table</h4>
+            <p>To book a table at {{ restaurant.name }}, please log in or sign up.</p>
+            <div class="d-flex justify-content-center">
+                <a href="{% url 'login' %}" class="btn btn-primary mx-2">Log In</a>
+                <a href="{% url 'signup' %}" class="btn btn-secondary mx-2">Sign Up</a>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
