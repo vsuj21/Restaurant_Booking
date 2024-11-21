@@ -152,28 +152,45 @@ def book_table(request, restaurant_id):
         # Handle booking
         people_count = int(request.POST['people_count'])
         time_slot_id = request.POST['time_slot']
-        selected_slot = get_object_or_404(TimeSlot, id=time_slot_id)
+        try:
+            with transaction.atomic():
+                # Lock the selected time slot for update
+                selected_slot = TimeSlot.objects.select_for_update().get(id=time_slot_id, restaurant=restaurant)
 
-        # Validate availability of slot
-        if selected_slot.capacity < people_count:
-            return render(request, 'booking_success.html', {'message': 'Not enough capacity for the selected number of people.'})
+                # Validate availability of slot
+                if selected_slot.capacity < people_count:
+                    return render(request, 'booking_success.html', {
+                        'message': 'Not enough capacity for the selected number of people.'
+                    })
 
-        # Create the booking
-        booking = Booking(
-            customer_name=request.user.username,  #  customer is logged in
-            customer_email=request.user.email,
-            time_slot=selected_slot,
-            people_count=people_count
-        )
-        booking.save()
+                # Create the booking
+                booking = Booking(
+                    customer_name=request.user.username,  # customer is logged in
+                    customer_email=request.user.email,
+                    time_slot=selected_slot,
+                    people_count=people_count
+                )
+                booking.save()
 
-        # Reduce the capacity of the time slot
-        selected_slot.capacity -= people_count
-        selected_slot.save()
+                # Reduce the capacity of the time slot
+                selected_slot.capacity -= people_count
+                selected_slot.save()
 
-        return redirect('booking-success')  # You can create a success page after booking
+            return redirect('booking-success')  # Redirect to a success page after booking
+
+        except TimeSlot.DoesNotExist:
+            return render(request, 'booking_success.html', {
+                'message': 'The selected time slot no longer exists.'
+            })
+
+        except Exception as e:
+            return render(request, 'booking_success.html', {
+                'message': f"An error occurred: {str(e)}"
+            })
 
     return render(request, 'book_table.html', {'restaurant': restaurant, 'time_slots': available_slots})
+
+
 def owner_dashboard(request):
     return render(request, 'owner_dashboard.html')
 
