@@ -1,0 +1,24 @@
+version: '3'
+services:
+  coreapi:
+    build:
+      context: .  
+      dockerfile: Dockerfile
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - static_volume:/restaurant_booking_system/staticfiles/
+      - media_volume:/restaurant_booking_system/mediafiles/
+    expose:
+      - 80
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    ports:
+      - 80:80
+    volumes:
+      - static_volume:/store/staticfiles/
+      - media_volume:/store/mediafiles/
+volumes:
+  static_volume:
+  media_volume:

@@ -1,0 +1,26 @@
+version: '3'
+services:
+  coreapi:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: gunicorn restaurant_booking_system.wsgi:application --bind 0.0.0.0:8000
+    volumes:
+      - static_volume:/restaurant_booking_system/staticfiles/
+      - media_volume:/restaurant_booking_system/mediafiles/
+    expose:
+      - 8000
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    ports:
+      - 80:80
+    volumes:
+      - static_volume:/restaurant_booking_system/staticfiles/
+      - media_volume:/restaurant_booking_system/mediafiles/
+    depends_on:
+      - coreapi
+volumes:
+  static_volume:
+  media_volume:
